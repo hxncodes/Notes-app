@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import Editor from "./components/Editor";
 import { data } from "./data";
@@ -14,10 +14,29 @@ import { nanoid } from "nanoid";
  */
 
 export default function App() {
-  const [notes, setNotes] = React.useState([]);
-  const [currentNoteId, setCurrentNoteId] = React.useState(
+  // State to save newNotes
+  const [notes, setNotes] = React.useState(
+    // it will check the localStorage with getMethod, if not available, it will provide empty array to store notes
+    () => JSON.parse(localStorage.getItem("notes")) || []
+  );
+
+  // Lazy initialization of state using arrow function
+  const [state, setState] = React.useState(() =>
+    console.log("State initialization")
+  );
+
+  // Checking if notes array have data, then getting its id at index 0
+  const [currentNoteId, setCurrentNoteId] = useState(
     (notes[0] && notes[0].id) || ""
   );
+
+  // useEffect to store notes into localStorage using setMethod
+  useEffect(() => {
+    localStorage.setItem("notes", JSON.stringify(notes));
+
+    // Splitting text into arrays whenever new line comes by pressing Enter key
+    // console.log(notes[0].body.split("\n"));
+  }, [notes]);
 
   function createNewNote() {
     const newNote = {
@@ -28,14 +47,35 @@ export default function App() {
     setCurrentNoteId(newNote.id);
   }
 
+  // deleting selected note and returning remaing notes using filter method
+  function deleteNote(event, noteId) {
+    event.stopPropagation();
+    setNotes((oldNotes) => oldNotes.filter((note) => note.id !== noteId));
+  }
+
   function updateNote(text) {
-    setNotes((oldNotes) =>
-      oldNotes.map((oldNote) => {
-        return oldNote.id === currentNoteId
-          ? { ...oldNote, body: text }
-          : oldNote;
-      })
-    );
+    // Put the most recently-modified note at the top
+    setNotes((oldNotes) => {
+      const newArray = [];
+      for (let i = 0; i < oldNotes.length; i++) {
+        const oldNote = oldNotes[i];
+        if (oldNote.id === currentNoteId) {
+          newArray.unshift({ ...oldNote, body: text });
+        } else {
+          newArray.push(oldNote);
+        }
+      }
+      return newArray;
+    });
+
+    // Simply returning Notes with map method with default order of the array
+    // setNotes((oldNotes) =>
+    //   oldNotes.map((oldNote) => {
+    //     return oldNote.id === currentNoteId
+    //       ? { ...oldNote, body: text }
+    //       : oldNote;
+    //   })
+    // );
   }
 
   function findCurrentNote() {
@@ -55,6 +95,7 @@ export default function App() {
             currentNote={findCurrentNote()}
             setCurrentNoteId={setCurrentNoteId}
             newNote={createNewNote}
+            deleteNote={deleteNote}
           />
           {currentNoteId && notes.length > 0 && (
             <Editor currentNote={findCurrentNote()} updateNote={updateNote} />
